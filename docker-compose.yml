@@ -1,0 +1,17 @@
+version: '3'
+services:
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    container_name: bookcove-fastapi-container
+    environment:
+      - REDIS_HOST=redis  # Pointing to the Redis container
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    container_name: bookcove-redis-container 
