@@ -1,19 +1,28 @@
-from annotated_types import IsNan
 from fastapi import FastAPI, HTTPException
-import httpx
 from dotenv import load_dotenv
-import os
-from schemas.book import Book, ISBN
+import os, httpx, redis, json
+
+from schemas.book import Book
 
 load_dotenv()
 
 app = FastAPI()
-BASE_URL = "https://www.googleapis.com/books/v1/volumes"
+
+# NOTE: redis stores data as bytes so use 'json.dumps()' when storing and 'json.loads()' when retrieving
+# default to 'redis' if 'localhost' doesn't work in docker container
+redis_client = redis.Redis(host=os.getenv("REDIS_HOST", "localhost"), port=6379, db=0, decode_responses=True)
+
+BASE_URL = os.getenv("BASE_URL") 
 API_KEY = os.getenv("BOOK_API")
 
 @app.get("/search")
 async def search(bookname: str, max_results: int = 10, start_index: int = 0):
     url = f"{BASE_URL}?q={bookname}&maxResults={max_results}&startIndex={start_index}&key={API_KEY}"
+    cache_key = f"books_{bookname}_{max_results}_{start_index}"
+    cached_res = redis_client.get(cache_key)
+
+    if cached_res:
+        return {"book query": bookname, "cached": True, "data": json.loads(cached_res)}
 
     try:
         # Make an asynchronous request to the Google Books API
@@ -31,7 +40,7 @@ async def search(bookname: str, max_results: int = 10, start_index: int = 0):
             raise HTTPException(status_code=404, detail="No books found.")
 
         books = []
-        # TODO: parse and clean the response to return ONLY the important details
+
         for item in data.get('items', []):
             volume_info = item.get("volumeInfo", {})
 
@@ -53,7 +62,9 @@ async def search(bookname: str, max_results: int = 10, start_index: int = 0):
                 isbn=isbn_list
             )
             books.append(book_data)
-        return books
+        redis_client.setex(cache_key, 600, json.dumps([book.dict() for book in books]))
+
+        return {"book query": bookname, "cached": False, "data": books}
 
     except httpx.RequestError as e:
         # Handle errors that occur during the HTTP request
