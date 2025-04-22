@@ -8,7 +8,7 @@ class ISBN(BaseModel):
 class Book(BaseModel):
     id: str
     title: str
-    description: str
+    description: str | None = None
     page_count: int | None = None
     average_rating: float | None = None
     language: str | None = None
