@@ -1,5 +1,6 @@
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import logging
 
 class DBClient:
     _instance = None
@@ -11,7 +12,7 @@ class DBClient:
         self.client = MongoClient(uri, tls=True, tlsAllowInvalidCertificates=True,server_api=ServerApi('1') )
         try:
             self.client.admin.command('ping')
-            print("Pinged your deployment. You successfully connected to MongoDB!")
+            logging.info("Pinged your deployment. You successfully connected to MongoDB!")
         except Exception as e:
             print(e)
 
@@ -25,6 +26,6 @@ class DBClient:
         return DBClient._instance
     
     def close(self):
-        print("closing db connection")
+        logging.info("closing db connection")
         self.client.close()
         DBClient._instance = None
