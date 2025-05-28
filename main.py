@@ -5,6 +5,7 @@ import os, logging
 
 from routers.search_api import s_api
 from routers.book_api import b_api
+from routers.lib_api import l_api
 from lib.mongo import DBClient
 
 load_dotenv()
@@ -28,3 +29,4 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(s_api)
 app.include_router(b_api, prefix="/book")
+app.include_router(l_api, prefix="/lib")
