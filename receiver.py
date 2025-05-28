@@ -65,7 +65,7 @@ def main():
         return
 
     def fav_callback(ch, method, properties, body):
-        print(f"[x] Received(fav): {body}")
+        print("[x] Received(fav)")
         json_data = body.decode('utf-8')
         data = json.loads(json_data)
         cache_key = f"user_{data['user_id']}_books"
@@ -79,12 +79,13 @@ def main():
             print("removing book from fav cache")
             redis_client.lrem(cache_key, 0, json.dumps(data['book']))
         print("[x] Done processing message(fav). ")
+   
     
     def lib_callback(ch, method, properties, body):
-        print(f"[x] Received(lib): {body}")
+        print("[x] Received(lib)")
         json_data = body.decode('utf-8')
         data = json.loads(json_data)
-        cache_key = f"user_{data['user_id']}_books"
+        cache_key = f"user_{data['user_id']}_books_in_lib"
 
         if data['action'] ==  "added_to_library":
             # push new book to cache
@@ -94,9 +95,14 @@ def main():
             # remove from cache
             print("removing book from lib cache")
             redis_client.lrem(cache_key, 0, json.dumps(data['book']))
+        elif data['action'] == 'update_book_from_library':
+            # update book from cache
+            print("updating book from lib cache")
+            redis_client.lrem(cache_key, 0, json.dumps(data['old_book']))
+            redis_client.lpush(cache_key, json.dumps(data['book']))
         print("[x] Done processing message(lib). ")
 
-    channel.basic_consume(queue='book-favorites-queue', on_message_callback=fav_callback, auto_ack=True)
+    channel.basic_consume(queue='RABBIT_QUEUE', on_message_callback=fav_callback, auto_ack=True)
     channel.basic_consume(queue='book-lib-queue', on_message_callback=lib_callback, auto_ack=True)
 
     print(f' [*] Waiting for messages on host {RABBITMQ_CONNECT_HOST}. To exit press CTRL+C')
