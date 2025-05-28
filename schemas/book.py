@@ -1,9 +1,13 @@
 from pydantic import BaseModel
-
+from datetime import datetime
 
 class ISBN(BaseModel):
     identifier: str
     type: str
+
+class ReadingProgess(BaseModel):
+    page_bookmark: int = 0
+    is_finished: bool = False
 
 
 class Book(BaseModel):
@@ -18,3 +22,4 @@ class Book(BaseModel):
     genre: list[str] | None = None
     cover_img: list[str] | None = None
     is_favorite: bool = False
+    reading_progress: ReadingProgess | None = None
