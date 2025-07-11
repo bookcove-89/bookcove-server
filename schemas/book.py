@@ -8,6 +8,7 @@ class ISBN(BaseModel):
 class ReadingProgess(BaseModel):
     page_bookmark: int = 0
     is_finished: bool = False
+    is_reading: bool = False
 
 
 class Book(BaseModel):
@@ -22,4 +23,4 @@ class Book(BaseModel):
     genre: list[str] | None = None
     cover_img: list[str] | None = None
     is_favorite: bool = False
-    reading_progress: ReadingProgess | None = None
+    reading_progress: ReadingProgess | None
