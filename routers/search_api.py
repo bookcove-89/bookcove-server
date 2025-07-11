@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 import httpx, os, json
 
 from lib.redis import redis_client
-from schemas.book import Book
+from schemas.book import Book, ReadingProgess
 from schemas.search import SearchItem
 
 s_api = APIRouter()
@@ -68,7 +68,8 @@ async def search(bookname: str, max_results: int = 15, start_index: int = 0):
                     authors=volume_info.get("authors", []),
                     genre=volume_info.get("categories", []),
                     cover_img=cover_img_list,
-                    isbn=isbn_list
+                    isbn=isbn_list,
+                    reading_progress=ReadingProgess()
                 )
                 if book_data.description is None:
                     continue

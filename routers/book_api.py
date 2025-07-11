@@ -42,8 +42,8 @@ async def add_to_favorites(request: AddToFavoritesRequest):
 
         try:
             channel, connection = init_rabbit_mq()
-            channel.queue_declare(queue="RABBIT_QUEUE", durable=True)
-            channel.basic_publish(exchange='', routing_key="RABBIT_QUEUE", body=json.dumps(mq_msg_data, default=datetime_serializer))
+            channel.queue_declare(queue=RABBIT_QUEUE, durable=True)
+            channel.basic_publish(exchange='', routing_key=RABBIT_QUEUE, body=json.dumps(mq_msg_data, default=datetime_serializer))
         except Exception as mq_err:
             print(f"Error publishing to RabbitMQ (non-critical): {mq_err}")
         finally:
@@ -84,8 +84,8 @@ async def remove_favorite(request: RemoveFavoriteRequest):
             }
         try:
             channel, connection = init_rabbit_mq()
-            channel.queue_declare(queue="RABBIT_QUEUE", durable=True)
-            channel.basic_publish(exchange='', routing_key="RABBIT_QUEUE", body=json.dumps(mq_msg_data, default=datetime_serializer))
+            channel.queue_declare(queue=RABBIT_QUEUE, durable=True)
+            channel.basic_publish(exchange='', routing_key=RABBIT_QUEUE, body=json.dumps(mq_msg_data, default=datetime_serializer))
 
             connection.close()
         except Exception as mq_err:
