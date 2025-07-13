@@ -11,13 +11,13 @@ BASE_URL = os.getenv("BASE_URL")
 API_KEY = os.getenv("BOOK_API")
 
 @s_api.get("/search")
-async def search(bookname: str, max_results: int = 15, start_index: int = 0):
+async def search(bookname: str, uid: str, max_results: int = 15, start_index: int = 0):
     # Check if the search term is empty
     if not bookname.strip():
         raise HTTPException(status_code=400, detail="Search item cannot be empty.")
 
     url = f"{BASE_URL}?q={bookname}&maxResults={max_results}&startIndex={start_index}&key={API_KEY}&printType=books&langRestrict=en"
-    cache_key = f"books_{bookname}_{max_results}_{start_index}"
+    cache_key = f"books_{bookname}_{max_results}_{start_index}_{uid}"
     cached_res = redis_client.get(cache_key)
 
     if cached_res:
@@ -89,7 +89,7 @@ async def search(bookname: str, max_results: int = 15, start_index: int = 0):
 
 @s_api.post("/recent-searches")
 def post_recent_searches(item: SearchItem):
-    cache_key = "recent_searches"
+    cache_key = f"recent_searches_{item.uid}"
     max_len = 5             # Max searches stored
     ttl_seconds = 86400 * 2     # 2 day (expiration time)
 
@@ -112,8 +112,8 @@ def post_recent_searches(item: SearchItem):
 
 
 @s_api.get("/recent-searches")
-def get_recent_searches():
-    cache_key = "recent_searches"
+def get_recent_searches(uid: str):
+    cache_key = f"recent_searches_{uid}"
     max_len = 5            # Max searches stored
 
     redis_client.ltrim(cache_key, 0, max_len - 1)   # Make sure only 10 items are kept
