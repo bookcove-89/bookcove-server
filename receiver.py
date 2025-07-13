@@ -1,6 +1,6 @@
 print("RECEIVER SCRIPT STARTED ----- TOP OF FILE") 
 
-import pika, os, redis, json, time, sys
+import pika, os, redis, json, time, sys, constants
 
 print("RECEIVER SCRIPT IMPORTS DONE")
 
@@ -17,7 +17,6 @@ RABBITMQ_CONNECT_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 print(f"RECEIVER SCRIPT RABBITMQ_HOST: {RABBITMQ_CONNECT_HOST}")
 
 def main():
-    print("RECEIVER SCRIPT MAIN FUNCTION STARTED")
     connection, channel = None, None
     retry_interval = 5
     max_retries = 12 
@@ -39,12 +38,13 @@ def main():
             print(f" [CONSUMER] Successfully connected to RabbitMQ at {RABBITMQ_CONNECT_HOST}")
 
 
-            channel.queue_declare(queue='book-favorites-queue', durable=True)
-            print(" [CONSUMER] Queue 'book-favorites-queue' declared.")
+            channel.queue_declare(queue=constants.RABBIT_QUEUE_FAV, durable=True)
+            print(f" [CONSUMER] Queue '{constants.RABBIT_QUEUE_FAV}' declared.")
 
-            channel.queue_declare(queue='book-lib-queue', durable=True)
-            print(" [CONSUMER] Queue 'book-lib-queue' declared.")
+            channel.queue_declare(queue=constants.RABBIT_QUEUE_LIB, durable=True)
+            print(f" [CONSUMER] Queue '{constants.RABBIT_QUEUE_LIB}' declared.")
             break
+
         except pika.exceptions.AMQPConnectionError as e:
             print(f" [CONSUMER] RabbitMQ connection failed: {e}.")
             attempt += 1
@@ -65,45 +65,62 @@ def main():
         return
 
     def fav_callback(ch, method, properties, body):
-        print("[x] Received(fav)")
+        print("[x] Received (in fav)")
         json_data = body.decode('utf-8')
         data = json.loads(json_data)
-        cache_key = f"user_{data['user_id']}_books"
+        cache_key = constants.FAV_CACHE_KEY(data['user_id'])
+        cache_key_lib = constants.LIB_CACHE_KEY(data['user_id'])
+    
+        match data["action"]:
+            case constants.ADD_FAV:
+                print("adding book to favorites cache")
+                redis_client.lpush(cache_key, json.dumps(data["book"]))
+                redis_client.lpush(cache_key_lib, json.dumps(data["book"]))
 
-        if data['action'] ==  "added_favorite":
-            # push new book to cache
-            print("adding book to fav cache")
-            redis_client.lpush(cache_key, json.dumps(data['book']))
-        elif data['action'] == "remove_favorite":
-            # remove from cache
-            print("removing book from fav cache")
-            redis_client.lrem(cache_key, 0, json.dumps(data['book']))
-        print("[x] Done processing message(fav). ")
+            case constants.RM_FAV:
+                print("removing book from favorites cache")
+                redis_client.lrem(cache_key, 0, json.dumps(data['book']))
+            
+            case constants.UPDATED_FAV:
+                print("updating book in lib to be favorited")
+
+                # remove the out of date book from library cache
+                redis_client.lrem(cache_key_lib, 0, json.dumps(data["old_book"]))
+
+                # add the up to date to the library cache
+                redis_client.lpush(cache_key_lib, json.dumps(data["new_book"]))
+
+                # add to the favorite book cache
+                redis_client.lpush(cache_key, json.dumps(data["new_book"]))
+
+        print("[x] Done processing message (fav queue). ")
    
     
     def lib_callback(ch, method, properties, body):
-        print("[x] Received(lib)")
+        print("[x] Received (in lib)")
         json_data = body.decode('utf-8')
         data = json.loads(json_data)
-        cache_key = f"user_{data['user_id']}_books_in_lib"
+        cache_key = constants.LIB_CACHE_KEY(data['user_id'])
 
-        if data['action'] ==  "added_to_library":
-            # push new book to cache
-            print("adding book to lib cache")
-            redis_client.lpush(cache_key, json.dumps(data['book']))
-        elif data['action'] == "remove_from_library":
-            # remove from cache
-            print("removing book from lib cache")
-            redis_client.lrem(cache_key, 0, json.dumps(data['book']))
-        elif data['action'] == 'update_book_from_library':
-            # update book from cache
-            print("updating book from lib cache")
-            redis_client.lrem(cache_key, 0, json.dumps(data['old_book']))
-            redis_client.lpush(cache_key, json.dumps(data['book']))
+        match data["action"]:
+            case constants.ADD_LIB:
+                print("adding book to library cache")
+                redis_client.lpush(cache_key, json.dumps(data["book"]))
+                
+            case constants.RM_LIB:
+                print("removing from library cache")
+                redis_client.lrem(cache_key, 0, json.dumps(data["book"]))
+                
+            case constants.UPDATE_LIB:
+                print("updating book from library cache")
+                redis_client.lrem(cache_key, 0, json.dumps(data["old_book"]))
+                redis_client.lpush(cache_key, json.dumps(data["book"]))
+
         print("[x] Done processing message(lib). ")
 
-    channel.basic_consume(queue='RABBIT_QUEUE', on_message_callback=fav_callback, auto_ack=True)
-    channel.basic_consume(queue='book-lib-queue', on_message_callback=lib_callback, auto_ack=True)
+
+    channel.basic_consume(queue=constants.RABBIT_QUEUE_FAV, on_message_callback=fav_callback, auto_ack=True)
+    channel.basic_consume(queue=constants.RABBIT_QUEUE_LIB, on_message_callback=lib_callback, auto_ack=True)
 
     print(f' [*] Waiting for messages on host {RABBITMQ_CONNECT_HOST}. To exit press CTRL+C')
     try:
