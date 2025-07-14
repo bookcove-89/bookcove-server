@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-This project's backend is built using the following core technologies, chosen for their efficiency, scalability, and robust features:
+This project's backend is built using the following core technologies:
 
 <div align="center">
   <img src="https://img.shields.io/badge/fastapi-109989?style=for-the-badge&logo=FASTAPI&logoColor=white" alt="FastAPI" />
