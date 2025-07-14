@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   fastapi:
     build: .
@@ -9,9 +8,10 @@ services:
       - rabbitmq
     container_name: bookcove-fastapi-container
     environment:
-      - REDIS_HOST=redis  # Pointing to the Redis container
+      - REDIS_HOST=redis  
       - RABBITMQ_HOST=rabbitmq
-
+      - BASE_URL=${BASE_URL}
+      - BOOK_API=${BOOK_API}
   redis:
     image: redis:alpine
     ports:
@@ -21,8 +21,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine 
     ports:
-      - "5672:5672"   # For AMQP client connections (your Python apps)
-      - "15672:15672" # For the RabbitMQ Management UI (access via http://localhost:15672)
+      - "5672:5672"   
+      - "15672:15672" 
     container_name: bookcove-rabbitmq-container
 
   consumer:
@@ -33,6 +33,7 @@ services:
       - rabbitmq
     container_name: bookcove-consumer-container
     environment:
-      - REDIS_HOST=redis         # Consumer needs to connect to Redis
-      - RABBITMQ_HOST=rabbitmq   # Consumer needs to connect to RabbitMQ
+      - REDIS_HOST=redis        
+      - RABBITMQ_HOST=rabbitmq   
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped 
